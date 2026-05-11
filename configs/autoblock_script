@@ -1,0 +1,31 @@
+#!/bin/bash
+
+LOG="/var/log/snort/snort.alert.fast"
+
+tail -Fn0 $LOG | while read line
+
+do
+
+    IP=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) print $i}' | head -1)
+
+    # Skip invalid IPs
+
+    if [[ -z "$IP" || "$IP" == "0.0.0.0" ]]; then
+
+        continue
+
+    fi
+
+    # Avoid duplicate blocking
+
+    if iptables -L INPUT -n | grep -q "$IP"; then
+
+        continue
+
+    fi
+
+    echo "[!] Detected attack from $IP"
+
+    iptables -A INPUT -s $IP -j DROP
+
+done
